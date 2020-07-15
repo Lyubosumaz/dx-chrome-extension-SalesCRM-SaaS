@@ -18,7 +18,14 @@ chrome.contextMenus.onClicked.addListener(function (clickData) {
     }
 
     chrome.storage.sync.set({ 'fields': markedDataObj }, function () {
-      chrome.extension.getBackgroundPage().console.log(markedDataObj);
+      let notificationOptions = {
+        type: 'basic',
+        iconUrl: './assets/images/48.png',
+        title: 'Successfully Added Your Marked Text!',
+        message: 'Your marked credentials are added to on the form fields.'
+      };
+
+      chrome.notifications.create('successfullyAddedMarkedText', notificationOptions);
     });
   }
 });

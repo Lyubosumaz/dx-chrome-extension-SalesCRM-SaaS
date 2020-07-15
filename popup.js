@@ -143,6 +143,14 @@ function mainLogic() {
                 // TODO send the data
                 chrome.extension.getBackgroundPage().console.log(confirmElement, 'confirm');
                 chrome.storage.sync.set({ "collection": newCollection }, function () {
+                    let notificationOptions = {
+                        type: 'basic',
+                        iconUrl: './assets/images/48.png',
+                        title: 'Successfully Confirmed!',
+                        message: 'Credentials are saved on the site!'
+                    };
+
+                    chrome.notifications.create('successfullyConfirmed', notificationOptions);
                     setLeadsListActions(newCollection);
                 });
             });
@@ -158,6 +166,14 @@ function mainLogic() {
                 newCollection = newCollection.filter((element) => element.id !== currentId);
 
                 chrome.storage.sync.set({ "collection": newCollection }, function () {
+                    let notificationOptions = {
+                        type: 'basic',
+                        iconUrl: './assets/images/48.png',
+                        title: 'Successfully Removed!',
+                        message: 'Credentials removed from temporary list.'
+                    };
+
+                    chrome.notifications.create('successfullyRemoved', notificationOptions);
                     setLeadsListActions(newCollection);
                 });
             });
