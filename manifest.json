@@ -1,0 +1,31 @@
+{
+    "manifest_version": 2,
+    "name": "SalesCRM SaaS",
+    "description": "Simple chrome extension which will add leads date to your https://salescrm.org/ site.",
+    "version": "1.0.1",
+    "icons": {
+        "16": "assets/images/16.png",
+        "24": "assets/images/24.png",
+        "32": "assets/images/32.png",
+        "48": "assets/images/48.png",
+        "128": "assets/images/128.png"
+    },
+    "background": {
+        "scripts": [
+            "pageEvent.js"
+        ],
+        "persistent": false
+    },
+    "browser_action": {
+        "default_icon": "assets/images/16.png",
+        "default_popup": "popup.html"
+    },
+    "permissions": [
+        "storage",
+        "contextMenus",
+        "notifications",
+        "cookies",
+        "http://*/*",
+        "https://*/*"
+    ]
+}

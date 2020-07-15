@@ -1,0 +1,134 @@
+body {
+    margin: 0;
+    min-width: 35em;
+    min-height: auto;
+    font-size: 16px;
+}
+
+.popup-list {
+    height: 20em;
+    margin: 1em 1.5em 0 1.5em;
+    overflow: auto;
+}
+
+.lead-card {
+    margin-bottom: 1em;
+    border-bottom: 1px solid #ddd;
+}
+
+.lead-card:last-child {
+    border-bottom: 0;
+}
+
+.lead-card .lead-card-header {
+    margin-bottom: 0.5em;
+    display: flex;
+    justify-content: space-between;
+}
+
+.lead-card-header .lead-card-company {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.lead-card-header .lead-card-header-actions {
+    display: flex;
+    vertical-align: middle;
+}
+
+.lead-card-header-actions .btn-confirm, .lead-card-header-actions .btn-remove {
+    margin-right: 1em;
+    padding: 0;
+    height: 1em;
+    display: none;
+    background: none;
+    border: none;
+    font: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+.lead-card-header-actions .btn-confirm {
+    color: #00b715;
+}
+
+.lead-card-header-actions .btn-remove {
+    color: #ff0001;
+}
+
+.lead-card:hover .btn-confirm, .lead-card:hover .btn-remove {
+    display: block;
+}
+
+.lead-card-header-actions .lead-card-time {
+    font-weight: 500;
+}
+
+.lead-card .lead-card-main {
+    margin-bottom: 0.5em;
+    display: flex;
+}
+
+.lead-card-main .lead-card-name {
+    margin-right: 1em;
+    font-weight: 500;
+}
+
+.lead-card-main .lead-card-email {
+    color: #1169c1;
+}
+
+.lead-card .lead-card-notes {
+    margin-bottom: 1em;
+    color: #666;
+    font-style: italic;
+}
+
+.fields-holder {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-gap: 1px;
+    border: 1px solid #ddd;
+    background: #ddd;
+}
+
+.fields-holder .custom-field {
+    padding: 1.5em;
+    background: #f8f8f8;
+    outline: none;
+    border: none;
+}
+
+.fields-holder .custom-field::placeholder {
+    color: #7c7c7c;
+    font-style: italic;
+}
+
+.fields-holder .custom-field:focus::placeholder {
+    color: transparent;
+}
+
+.fields-actions {
+    margin: 1.5em;
+    display: flex;
+    justify-content: space-between;
+}
+
+.fields-actions .fields-actions-buttons {
+    padding: 0.5em 1.2em;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.fields-actions .btn-add {
+    background: #115cbe;
+    color: #fff;
+}
+
+.fields-actions .btn-clear {
+    background: #fff;
+    color: #7c7c7c;
+}
