@@ -6,7 +6,6 @@ $(function () {
         .then((response) => {
             if (response) { mainLogic(); }
             if (!response) { unauthorizedUser(); }
-            chrome.extension.getBackgroundPage().console.log(response);
         });
 });
 
@@ -21,19 +20,20 @@ function accessThroughCookieUsage(url, name) {
 
 function mainLogic() {
     createLeadsForm();
+    setLeadsFormActions();
     let $company = $('#company');
     let $email = $('#email');
     let $name = $('#name');
     let $notes = $('#notes');
 
-    chrome.storage.sync.get(['collection', 'marked'], function (leads) {
+    chrome.storage.sync.get(['collection', 'fields'], function (leads) {
         setLeadsListActions(leads.collection);
 
-        if (Object.keys(leads.marked).length) {
-            $company.val(leads.marked.company);
-            $email.val(leads.marked.email);
-            $name.val(leads.marked.name);
-            $notes.val(leads.marked.notes);
+        if (Object.keys(leads.fields).length) {
+            $company.val(leads.fields.company);
+            $email.val(leads.fields.email);
+            $name.val(leads.fields.name);
+            $notes.val(leads.fields.notes);
         }
     });
 
@@ -79,26 +79,12 @@ function mainLogic() {
                 setLeadsListActions(newCollection);
             });
 
-            chrome.storage.sync.set({ 'marked': {} });
-            $company.val('');
-            $email.val('');
-            $name.val('');
-            $notes.val('');
+            clearFields();
         });
     });
 
     $('.btn-clear').click(function () {
-        chrome.storage.sync.set({ 'collection': [] }, function () {
-            let notificationOptions = {
-                type: 'basic',
-                iconUrl: './assets/images/48.png',
-                title: 'Successfully Clear!',
-                message: 'You have cleared your temporary list.'
-            };
-
-            chrome.notifications.create('successfullyClear', notificationOptions);
-            $('.popup-list').empty();
-        });
+        clearFields();
     });
 
     function collectionValidation(arr) {
@@ -194,6 +180,50 @@ function mainLogic() {
                 <button class="btn-clear ${fieldsActionsButtons}">Clear</button>
             </section>
         `);
+    }
+
+    function setLeadsFormActions() {
+        $('.custom-field').keyup(delay(function (event) {
+            let currentFieldChange = {};
+            if (event) { currentFieldChange[event.currentTarget.id] = event.currentTarget.value; }
+
+            let newFormFields = new Promise((resolve) => {
+                chrome.storage.sync.get(['fields'], function (from) {
+                    (!from.fields || Object.keys(from.fields).length === 0) ?
+                        resolve({ company: '', email: '', name: '', notes: '', })
+                        :
+                        resolve(from.fields);
+                });
+            });
+
+            newFormFields.then((fields) => {
+                if (Object.keys(currentFieldChange).length) {
+                    return ({ ...fields, ...currentFieldChange });
+                }
+                return fields;
+            }).then((readyFields) => {
+                chrome.storage.sync.set({ 'fields': readyFields });
+            });
+        }, 200));
+
+        function delay(callback, ms) {
+            var timer = 0;
+            return function () {
+                var context = this, args = arguments;
+                clearTimeout(timer);
+                timer = setTimeout(function () {
+                    callback.apply(context, args);
+                }, ms || 0);
+            };
+        }
+    }
+
+    function clearFields() {
+        chrome.storage.sync.set({ 'fields': {} });
+        $company.val('');
+        $email.val('');
+        $name.val('');
+        $notes.val('');
     }
 
     function getTimeOfAdding() {
