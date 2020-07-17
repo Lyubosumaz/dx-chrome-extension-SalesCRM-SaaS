@@ -20,21 +20,15 @@ function accessThroughCookieUsage(url, name) {
 
 function mainLogic() {
     createLeadsForm();
-    setLeadsFormActions();
+    handleExtensionForm();
     let $company = $('#company');
     let $email = $('#email');
     let $name = $('#name');
     let $notes = $('#notes');
 
-    chrome.storage.sync.get(['collection', 'fields'], function (leads) {
-        setLeadsListActions(leads.collection);
-
-        if (Object.keys(leads.fields).length) {
-            $company.val(leads.fields.company);
-            $email.val(leads.fields.email);
-            $name.val(leads.fields.name);
-            $notes.val(leads.fields.notes);
-        }
+    chrome.storage.sync.get(['collection', 'saveFields'], function (leads) {
+        setFormFields(leads);
+        buildLeadsListWithActions(leads.collection);
     });
 
     chrome.storage.onChanged.addListener(function (changes, namespace) {
@@ -47,45 +41,132 @@ function mainLogic() {
         }
     });
 
-    $('.btn-add').click(function () {
-        chrome.storage.sync.get(['collection'], function (leads) {
-            let newCollection = collectionValidation(leads.collection);
+    (function execute() {
+        addButton();
+        clearButton();
+        editButton();
+        cancelButton();
+    })();
 
-            if ($company.val() &&
-                $email.val() &&
-                $name.val() &&
-                $notes.val()
-            ) {
+    function addButton() {
+        $('.btn-add').click(function () {
+            chrome.storage.sync.get(['collection'], function (leads) {
+                let newCollection = collectionValidation(leads.collection);
+
+                if ($company.val() &&
+                    $email.val() &&
+                    $name.val() &&
+                    $notes.val()
+                ) {
+                    const popupForm = {
+                        id: Math.random().toString().substr(2, 8),
+                        date: getTimeOfAdding(),
+                        company: $company.val() ? $company.val() : 'empty company value!',
+                        email: $email.val() ? $email.val() : 'empty email value!',
+                        name: $name.val() ? $name.val() : 'empty name value!',
+                        notes: $notes.val() ? $notes.val() : 'empty notes value!',
+                    };
+
+                    newCollection.push(popupForm);
+                }
+
+                chrome.storage.sync.set({ 'collection': newCollection }, function () {
+                    let notificationOptions = {
+                        type: 'basic',
+                        iconUrl: './assets/images/48.png',
+                        title: 'Successfully Added!',
+                        message: 'You have added lead information in your temporary list.'
+                    };
+
+                    chrome.notifications.create('successfullyAdded', notificationOptions);
+                    buildLeadsListWithActions(newCollection);
+                });
+
+                clearFormFields();
+            });
+        });
+    }
+
+    function clearButton() {
+        $('.btn-clear').click(function () {
+            clearFormFields();
+        });
+    }
+
+    function editButton() {
+        $('.btn-edit').click(function () {
+            chrome.storage.sync.get(['selectedId', 'collection'], function (leads) {
+                let newCollection = collectionValidation(leads.collection);
+
                 const popupForm = {
-                    id: Math.random().toString().substr(2, 8),
+                    id: leads.selectedId,
+                    date: getTimeOfAdding(),
                     company: $company.val() ? $company.val() : 'empty company value!',
                     email: $email.val() ? $email.val() : 'empty email value!',
                     name: $name.val() ? $name.val() : 'empty name value!',
                     notes: $notes.val() ? $notes.val() : 'empty notes value!',
                 };
 
-                newCollection.push(popupForm);
-            }
+                let newData = [];
+                for (const iterator of newCollection) {
+                    if (iterator.id === leads.selectedId) {
+                        newData.push(popupForm);
+                    } else {
+                        newData.push(iterator);
+                    }
+                }
 
-            chrome.storage.sync.set({ 'collection': newCollection }, function () {
-                let notificationOptions = {
-                    type: 'basic',
-                    iconUrl: './assets/images/48.png',
-                    title: 'Successfully Added!',
-                    message: 'You have added lead information in your temporary list.'
-                };
+                chrome.storage.sync.set({ 'collection': newData }, function () {
+                    let notificationOptions = {
+                        type: 'basic',
+                        iconUrl: './assets/images/48.png',
+                        title: 'Successfully Edited!',
+                        message: 'You have edited lead information in your temporary list.'
+                    };
 
-                chrome.notifications.create('successfullyAdded', notificationOptions);
-                setLeadsListActions(newCollection);
+                    chrome.notifications.create('successfullyAdded', notificationOptions);
+                    handleCancellation();
+                });
             });
-
-            clearFields();
         });
-    });
+    }
 
-    $('.btn-clear').click(function () {
-        clearFields();
-    });
+    function cancelButton() {
+        $('.btn-cancel').click(function () {
+            chrome.extension.getBackgroundPage().console.log('confirm');
+            handleCancellation();
+        });
+    }
+
+    function selectLeadForEditing() {
+        $('.lead-card').click(function (event) {
+            event.stopPropagation();
+
+            $('.btn-add').hide();
+            $('.btn-edit').show();
+            $('.btn-clear').hide();
+            $('.btn-cancel').show();
+
+            const currentId = event.currentTarget.id;
+            chrome.storage.sync.set({ 'selectedId': currentId });
+
+            chrome.storage.sync.get(['collection'], function (leads) {
+                const newCollection = collectionValidation(leads.collection);
+                let selectedLead = {};
+
+                for (const iterator of newCollection) {
+                    if (iterator.id === currentId) {
+                        selectedLead = iterator;
+                    }
+                }
+
+                $company.val(selectedLead.company);
+                $email.val(selectedLead.email);
+                $name.val(selectedLead.name);
+                $notes.val(selectedLead.notes);
+            });
+        });
+    }
 
     function collectionValidation(arr) {
         let shallowCopy = [];
@@ -93,10 +174,11 @@ function mainLogic() {
         return shallowCopy;
     }
 
-    function setLeadsListActions(arr) {
+    function buildLeadsListWithActions(arr) {
         $('.popup-list').html(createLeadsList(arr));
         confirmButton();
         removeButton();
+        selectLeadForEditing();
     }
 
     function createLeadsList(arr) {
@@ -109,7 +191,7 @@ function mainLogic() {
                     <div class="${leadCard}-header-actions">
                         <button class="btn-confirm">Confirm</button>
                         <button class="btn-remove">Remove</button>
-                        <div class="${leadCard}-time"><span>${getTimeOfAdding()}</span></div>
+                        <div class="${leadCard}-time"><span>${cur.date}</span></div>
                     </div>
                 </section>
                 <section class="${leadCard}-main">
@@ -126,7 +208,7 @@ function mainLogic() {
     }
 
     function confirmButton() {
-        $('.btn-confirm').click(function () {
+        $('.btn-confirm').click(function (event) {
             const currentId = event.currentTarget.parentElement.parentElement.parentElement.id;
 
             chrome.storage.sync.get(['collection'], function (leads) {
@@ -140,19 +222,19 @@ function mainLogic() {
                     }
                 });
 
-                // TODO send the data
+                // TODO send the data to WP
                 chrome.extension.getBackgroundPage().console.log(confirmElement, 'confirm');
-                chrome.storage.sync.set({ "collection": newCollection }, function () {
-                    let notificationOptions = {
-                        type: 'basic',
-                        iconUrl: './assets/images/48.png',
-                        title: 'Successfully Confirmed!',
-                        message: 'Credentials are saved on the site!'
-                    };
+                // chrome.storage.sync.set({ "collection": newCollection }, function () {
+                //     let notificationOptions = {
+                //         type: 'basic',
+                //         iconUrl: './assets/images/48.png',
+                //         title: 'Successfully Confirmed!',
+                //         message: 'Credentials are saved on the site!'
+                //     };
 
-                    chrome.notifications.create('successfullyConfirmed', notificationOptions);
-                    setLeadsListActions(newCollection);
-                });
+                //     chrome.notifications.create('successfullyConfirmed', notificationOptions);
+                //     buildLeadsListWithActions(newCollection);
+                // });
             });
         });
     }
@@ -174,9 +256,22 @@ function mainLogic() {
                     };
 
                     chrome.notifications.create('successfullyRemoved', notificationOptions);
-                    setLeadsListActions(newCollection);
+                    buildLeadsListWithActions(newCollection);
+                    handleCancellation();
                 });
             });
+        });
+    }
+
+    function handleCancellation() {
+        $('.btn-add').show();
+        $('.btn-edit').hide();
+        $('.btn-clear').show();
+        $('.btn-cancel').hide();
+
+        chrome.storage.sync.get(['collection', 'saveFields'], function (form) {
+            setFormFields(form);
+            buildLeadsListWithActions(form.collection);
         });
     }
 
@@ -192,13 +287,15 @@ function mainLogic() {
             </section>
 
             <section class="fields-actions">
-                <button class="btn-add ${fieldsActionsButtons}">Add</button>
+                <button class="btn-add ${fieldsActionsButtons}" >Add</button>
+                <button class="btn-edit ${fieldsActionsButtons} hidden">Edit</button>
                 <button class="btn-clear ${fieldsActionsButtons}">Clear</button>
+                <button class="btn-cancel ${fieldsActionsButtons} hidden">Cancel</button>
             </section>
         `);
     }
 
-    function setLeadsFormActions() {
+    function handleExtensionForm() {
         $('.custom-field').keyup(delay(function (event) {
             let currentFieldChange = {};
             if (event) { currentFieldChange[event.currentTarget.id] = event.currentTarget.value; }
@@ -234,8 +331,23 @@ function mainLogic() {
         }
     }
 
-    function clearFields() {
+    function setFormFields(element) {
+        if (Object.keys(element.saveFields).length) {
+            $company.val(element.saveFields.company);
+            $email.val(element.saveFields.email);
+            $name.val(element.saveFields.name);
+            $notes.val(element.saveFields.notes);
+        } else {
+            $company.val('');
+            $email.val('');
+            $name.val('');
+            $notes.val('');
+        }
+    }
+
+    function clearFormFields() {
         chrome.storage.sync.set({ 'fields': {} });
+        chrome.storage.sync.set({ 'saveFields': {} });
         $company.val('');
         $email.val('');
         $name.val('');

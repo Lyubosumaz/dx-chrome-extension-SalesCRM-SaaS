@@ -17,7 +17,7 @@ chrome.contextMenus.onClicked.addListener(function (clickData) {
       if (key.toLowerCase().includes('notes')) { markedDataObj.notes = value; }
     }
 
-    chrome.storage.sync.set({ 'fields': markedDataObj }, function () {
+    chrome.storage.sync.set({ 'saveFields': markedDataObj }, function () {
       let notificationOptions = {
         type: 'basic',
         iconUrl: './assets/images/48.png',

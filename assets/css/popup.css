@@ -141,12 +141,16 @@ body {
     cursor: pointer;
 }
 
-.fields-actions .btn-add {
+.fields-actions .btn-add, .fields-actions .btn-edit {
     background: #115cbe;
     color: #fff;
 }
 
-.fields-actions .btn-clear {
+.fields-actions .btn-clear, .fields-actions .btn-cancel {
     background: #fff;
     color: #7c7c7c;
+}
+
+.fields-actions-buttons.hidden {
+    display: none;
 }
