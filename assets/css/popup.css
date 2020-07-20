@@ -5,11 +5,14 @@ body {
     font-size: 16px;
 }
 
+button {
+    outline: none;
+}
+
 .popup-list {
-    height: 20em;
+    height: auto;
     margin: 1em 0.4em 0.5em 1.5em;
     padding-right: 0.8em;
-    overflow: auto;
 }
 
 ::-webkit-scrollbar {

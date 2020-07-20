@@ -1,5 +1,9 @@
 var url = 'http://salescrm.local/';
-var name = 'wordpress_logged_in_bd33638523a252d14e880fd261e82d2f';
+var name = 'wordpress_logged_in_458f93bfcdf0c5802361bad29153947f';
+
+chrome.runtime.sendMessage({ greeting: "hello" }, function (response) {
+    chrome.extension.getBackgroundPage().console.log(response, 'confirm');
+});
 
 $(function () {
     accessThroughCookieUsage(url, name)
@@ -133,7 +137,6 @@ function mainLogic() {
 
     function cancelButton() {
         $('.btn-cancel').click(function () {
-            chrome.extension.getBackgroundPage().console.log('confirm');
             handleCancellation();
         });
     }
@@ -182,8 +185,13 @@ function mainLogic() {
     }
 
     function createLeadsList(arr) {
-        let leadCard = 'lead-card';
         if (Array.isArray(arr) && arr.length) {
+            (arr.length >= 4) ?
+                $('.popup-list').css({ 'height': '20em', 'overflow': 'auto' })
+                :
+                $('.popup-list').css({ 'height': 'auto', 'overflow': 'none' });
+
+            const leadCard = 'lead-card';
             return arr.reduce((acc, cur, index) => acc += `
             <div id="${cur.id}" class="${leadCard} position-${index}">
                 <section class="${leadCard}-header">
@@ -204,7 +212,7 @@ function mainLogic() {
             </div>
         `, '');
         }
-        return '<div>Empty List</div>';
+        return '<div>Empty List...</div>';
     }
 
     function confirmButton() {
@@ -223,7 +231,15 @@ function mainLogic() {
                 });
 
                 // TODO send the data to WP
-                chrome.extension.getBackgroundPage().console.log(confirmElement, 'confirm');
+                delete confirmElement.id;
+                delete confirmElement.data;
+                chrome.extension.getBackgroundPage().console.log(JSON.stringify(confirmElement), 'confirm');
+                fetch('http://dxqaplayground.salescrm.local/wp-json/dx-crm/v1/add-lead', {
+                    method: 'POST',
+                    body: JSON.stringify(confirmElement)
+                })
+                    .then(response => response.json())
+                    .then(data => chrome.extension.getBackgroundPage().console.log(data));
                 // chrome.storage.sync.set({ "collection": newCollection }, function () {
                 //     let notificationOptions = {
                 //         type: 'basic',

@@ -10,6 +10,10 @@
         "48": "assets/images/48.png",
         "128": "assets/images/128.png"
     },
+    "options_ui": {
+        "page": "options.html",
+        "open_in_tab": false
+    },
     "background": {
         "scripts": [
             "pageEvent.js"
