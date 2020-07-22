@@ -1,22 +1,19 @@
-var url = 'http://salescrm.local/';
-var name = 'wordpress_logged_in_458f93bfcdf0c5802361bad29153947f';
-
-chrome.runtime.sendMessage({ greeting: "hello" }, function (response) {
-    chrome.extension.getBackgroundPage().console.log(response, 'confirm');
-});
+var fetchToUrl = 'http://dxqaplayground.salescrm.local/wp-json/dx-crm/v1/add-lead';
+var loginUrl = 'http://dxqaplayground.salescrm.local/wp-json/jwt-auth/v1/token'
+var listMaximum = '3'
 
 $(function () {
-    accessThroughCookieUsage(url, name)
+    accessThroughCookieUsage()
         .then((response) => {
             if (response) { mainLogic(); }
-            if (!response) { unauthorizedUser(); }
+            if (!response) { setLoginForm(); }
         });
 });
 
-function accessThroughCookieUsage(url, name) {
+function accessThroughCookieUsage() {
     return new Promise((resolve) => {
-        chrome.cookies.getAll({ 'url': url, 'name': name }, function (cookie) {
-            if (Array.isArray(cookie) && cookie.length) { resolve(true); }
+        chrome.storage.sync.get(null, function (user) {
+            if (user.details) { resolve(true); }
             resolve(false);
         });
     });
@@ -33,6 +30,11 @@ function mainLogic() {
     chrome.storage.sync.get(['collection', 'saveFields'], function (leads) {
         setFormFields(leads);
         buildLeadsListWithActions(leads.collection);
+        addButton();
+        clearButton();
+        editButton();
+        cancelButton();
+        logoutButton();
     });
 
     chrome.storage.onChanged.addListener(function (changes, namespace) {
@@ -44,13 +46,6 @@ function mainLogic() {
                 chrome.browserAction.setBadgeText({ 'text': null });
         }
     });
-
-    (function execute() {
-        addButton();
-        clearButton();
-        editButton();
-        cancelButton();
-    })();
 
     function addButton() {
         $('.btn-add').click(function () {
@@ -141,9 +136,26 @@ function mainLogic() {
         });
     }
 
+    function logoutButton() {
+        $('.btn-logout').click(function () {
+            chrome.storage.sync.remove(['details'], function () {
+                let notificationOptions = {
+                    type: 'basic',
+                    iconUrl: './assets/images/48.png',
+                    title: 'Successfully Logout!',
+                    message: 'You have logout.'
+                };
+
+                chrome.notifications.create('successfullyLogout', notificationOptions);
+                $('.popup-list, .popup-form').empty();
+                $('.popup-list, .popup-form').removeAttr('style');
+                setLoginForm();
+            });
+        });
+    }
+
     function selectLeadForEditing() {
         $('.lead-card').click(function (event) {
-            event.stopPropagation();
 
             $('.btn-add').hide();
             $('.btn-edit').show();
@@ -186,7 +198,7 @@ function mainLogic() {
 
     function createLeadsList(arr) {
         if (Array.isArray(arr) && arr.length) {
-            (arr.length >= 4) ?
+            (arr.length > Number(listMaximum)) ?
                 $('.popup-list').css({ 'height': '20em', 'overflow': 'auto' })
                 :
                 $('.popup-list').css({ 'height': 'auto', 'overflow': 'none' });
@@ -230,27 +242,38 @@ function mainLogic() {
                     }
                 });
 
-                // TODO send the data to WP
                 delete confirmElement.id;
                 delete confirmElement.data;
-                chrome.extension.getBackgroundPage().console.log(JSON.stringify(confirmElement), 'confirm');
-                fetch('http://dxqaplayground.salescrm.local/wp-json/dx-crm/v1/add-lead', {
-                    method: 'POST',
-                    body: JSON.stringify(confirmElement)
-                })
-                    .then(response => response.json())
-                    .then(data => chrome.extension.getBackgroundPage().console.log(data));
-                // chrome.storage.sync.set({ "collection": newCollection }, function () {
-                //     let notificationOptions = {
-                //         type: 'basic',
-                //         iconUrl: './assets/images/48.png',
-                //         title: 'Successfully Confirmed!',
-                //         message: 'Credentials are saved on the site!'
-                //     };
+                chrome.storage.sync.get(['details'], function (user) {
+                    fetch(fetchToUrl, {
+                        method: 'POST',
+                        body: JSON.stringify(confirmElement),
+                        headers: {
+                            'Authorization': `Bearer ${user.details.token}`,
+                            'Content-Type': 'application/json'
+                        },
+                    })
+                        .then(response => response.json())
+                        .then((data) => {
+                            if (data.message !== 'success') {
+                                console.error(data.message);
+                                return;
+                            }
+                            chrome.storage.sync.set({ "collection": newCollection }, function () {
+                                let notificationOptions = {
+                                    type: 'basic',
+                                    iconUrl: './assets/images/48.png',
+                                    title: 'Successfully Confirmed!',
+                                    message: 'Credentials are saved on the site!'
+                                };
 
-                //     chrome.notifications.create('successfullyConfirmed', notificationOptions);
-                //     buildLeadsListWithActions(newCollection);
-                // });
+                                chrome.notifications.create('successfullyConfirmed', notificationOptions);
+                                buildLeadsListWithActions(newCollection);
+                                handleCancellation();
+                            });
+                        })
+                        .catch(err => console.error(err));
+                });
             });
         });
     }
@@ -297,7 +320,7 @@ function mainLogic() {
         $('.popup-form').html(`
             <section class="fields-holder">
                 <input type="text" id="company" class="${customField}" name="company" placeholder="Company name ...">
-                <input type="text" id="email" class="${customField}" name="email" placeholder="Email address">
+                <input type="email" id="email" class="${customField}" name="email" placeholder="Email address">
                 <input type="text" id="name" class="${customField}" name="name" placeholder="Name">
                 <input type="text" id="notes" class="${customField}" name="notes" placeholder="Notes">
             </section>
@@ -307,6 +330,7 @@ function mainLogic() {
                 <button class="btn-edit ${fieldsActionsButtons} hidden">Edit</button>
                 <button class="btn-clear ${fieldsActionsButtons}">Clear</button>
                 <button class="btn-cancel ${fieldsActionsButtons} hidden">Cancel</button>
+                <button class="btn-logout ${fieldsActionsButtons}">Logout</button>
             </section>
         `);
     }
@@ -334,17 +358,6 @@ function mainLogic() {
                 chrome.storage.sync.set({ 'fields': readyFields });
             });
         }, 200));
-
-        function delay(callback, ms) {
-            var timer = 0;
-            return function () {
-                var context = this, args = arguments;
-                clearTimeout(timer);
-                timer = setTimeout(function () {
-                    callback.apply(context, args);
-                }, ms || 0);
-            };
-        }
     }
 
     function setFormFields(element) {
@@ -377,6 +390,94 @@ function mainLogic() {
     }
 }
 
+function setLoginForm() {
+    unauthorizedUser();
+    loginButton();
+    handleLoginForm();
+}
+
 function unauthorizedUser() {
-    $('.popup-list').html('<div>You are not logged in site</div>');
+    const customField = 'custom-field';
+    $('.popup-login').html(`
+        <h1 class="login-header">Login</h1>
+        <div class="login-form">
+            <section class="fields-holder">
+                <input type="text" id="username" class="${customField}" name="username" placeholder="Enter username">
+                <input type="password" id="password" class="${customField}" name="password" placeholder="Enter password">
+            </section>
+
+            <section class="fields-actions">
+                <button class="btn-login fields-actions-buttons">Login</button>
+            </section>
+        </div>
+    `);
+}
+
+function loginButton() {
+    $('.btn-login').click(function () {
+        chrome.storage.sync.get(['loginFields'], function (form) {
+            fetch(loginUrl, {
+                method: 'POST',
+                body: JSON.stringify({ username: form.loginFields.username, password: form.loginFields.password }),
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+            })
+                .then(response => response.json())
+                .then((data) => {
+                    if (!data.token) { return; }
+
+                    chrome.storage.sync.set({ 'details': data }, function () {
+                        let notificationOptions = {
+                            type: 'basic',
+                            iconUrl: './assets/images/48.png',
+                            title: 'Successfully Login!',
+                            message: 'You have login.'
+                        };
+
+                        chrome.notifications.create('successfullyLogin', notificationOptions);
+                    });
+                    chrome.storage.sync.set({ 'loginFields': {} });
+                    $('.popup-login').empty();
+                    mainLogic();
+                })
+                .catch(err => console.error(err));
+        })
+    })
+}
+
+function handleLoginForm() {
+    $('.custom-field').keyup(delay(function (event) {
+        let currentFieldChange = {};
+        if (event) { currentFieldChange[event.currentTarget.id] = event.currentTarget.value; }
+
+        let newFormFields = new Promise((resolve) => {
+            chrome.storage.sync.get(['loginFields'], function (from) {
+                (!from.loginFields || Object.keys(from.loginFields).length === 0) ?
+                    resolve({ username: '', password: '', })
+                    :
+                    resolve(from.loginFields);
+            });
+        });
+
+        newFormFields.then((fields) => {
+            if (Object.keys(currentFieldChange).length) {
+                return ({ ...fields, ...currentFieldChange });
+            }
+            return fields;
+        }).then((readyFields) => {
+            chrome.storage.sync.set({ 'loginFields': readyFields });
+        });
+    }, 100));
+}
+
+function delay(callback, ms) {
+    var timer = 0;
+    return function () {
+        var context = this, args = arguments;
+        clearTimeout(timer);
+        timer = setTimeout(function () {
+            callback.apply(context, args);
+        }, ms || 0);
+    };
 }

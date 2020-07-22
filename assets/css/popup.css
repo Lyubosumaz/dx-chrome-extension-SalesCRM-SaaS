@@ -9,6 +9,14 @@ button {
     outline: none;
 }
 
+.popup-login {
+    height: auto;
+}
+
+.popup-login .login-header {
+    padding-left: 1em;
+}
+
 .popup-list {
     height: auto;
     margin: 1em 0.4em 0.5em 1.5em;
@@ -144,7 +152,7 @@ button {
     cursor: pointer;
 }
 
-.fields-actions .btn-add, .fields-actions .btn-edit {
+.fields-actions .btn-login, .fields-actions .btn-add, .fields-actions .btn-edit, .fields-actions .btn-logout {
     background: #115cbe;
     color: #fff;
 }
