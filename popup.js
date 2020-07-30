@@ -43,7 +43,7 @@ function mainLogic() {
             allLeads.length !== 0 ?
                 chrome.browserAction.setBadgeText({ 'text': allLeads.length.toString() })
                 :
-                chrome.browserAction.setBadgeText({ 'text': null });
+                chrome.browserAction.setBadgeText({ 'text': '' });
         }
     });
 
@@ -361,7 +361,7 @@ function mainLogic() {
     }
 
     function setFormFields(element) {
-        if (Object.keys(element.saveFields).length) {
+        if (element.saveFields && Object.keys(element.saveFields).length) {
             $company.val(element.saveFields.company);
             $email.val(element.saveFields.email);
             $name.val(element.saveFields.name);
