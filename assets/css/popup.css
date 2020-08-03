@@ -113,7 +113,25 @@ button {
     font-style: italic;
 }
 
-.fields-holder {
+.lead-card .lead-card-error {
+    margin: 1em 0;
+    color: #ff0001;
+}
+
+.login-form .login-fields-holder {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.login-form .login-fields-holder .custom-field {
+    flex: 1 0 40%;
+}
+
+.login-form .login-fields-holder .custom-field.domain {
+    flex: 1 0 90%;
+}
+
+.fields-holder, .login-fields-holder {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     grid-gap: 1px;
@@ -121,14 +139,14 @@ button {
     background: #ddd;
 }
 
-.fields-holder .custom-field {
+.fields-holder .custom-field, .login-fields-holder .custom-field {
     padding: 1.5em;
     background: #f8f8f8;
     outline: none;
     border: none;
 }
 
-.fields-holder .custom-field::placeholder {
+.fields-holder .custom-field::placeholder, .login-fields-holder .custom-field::placeholder {
     color: #7c7c7c;
     font-style: italic;
 }

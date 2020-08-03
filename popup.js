@@ -1,6 +1,8 @@
-var fetchToUrl = 'http://dxqaplayground.salescrm.local/wp-json/dx-crm/v1/add-lead';
-var loginUrl = 'http://dxqaplayground.salescrm.local/wp-json/jwt-auth/v1/token'
-var listMaximum = '3'
+// var siteUrl = 'http://dxqaplayground.salescrm.local/';
+var fetchToUrl = '/wp-json/dx-crm/v1/add-lead';
+var loginUrl = '/wp-json/jwt-auth/v1/token';
+var listMaximum = '3';
+var dev = chrome.extension.getBackgroundPage();
 
 $(function () {
     accessThroughCookieUsage()
@@ -231,21 +233,31 @@ function mainLogic() {
         $('.btn-confirm').click(function (event) {
             const currentId = event.currentTarget.parentElement.parentElement.parentElement.id;
 
-            chrome.storage.sync.get(['collection'], function (leads) {
+            chrome.storage.sync.get(['collection', 'siteDomain'], function (leads) {
+                const siteDomain = leads.siteDomain;
+                dev.console.log(siteDomain);
                 let newCollection = collectionValidation(leads.collection);
                 let confirmElement = {};
                 newCollection = newCollection.filter((element) => {
                     if (element.id === currentId) {
-                        confirmElement = element;
+                        isEmail(element.email) ?
+                            confirmElement = element
+                            :
+                            confirmElement.error = 'Your email address is not valid';
                     } else {
                         return element;
                     }
                 });
 
+                if (confirmElement.hasOwnProperty('error')) {
+                    handleIncorrectEmail(currentId, confirmElement);
+                    return;
+                }
+
                 delete confirmElement.id;
                 delete confirmElement.data;
                 chrome.storage.sync.get(['details'], function (user) {
-                    fetch(fetchToUrl, {
+                    fetch(siteDomain + fetchToUrl, {
                         method: 'POST',
                         body: JSON.stringify(confirmElement),
                         headers: {
@@ -256,7 +268,7 @@ function mainLogic() {
                         .then(response => response.json())
                         .then((data) => {
                             if (data.message !== 'success') {
-                                console.error(data.message);
+                                dev.console.error(data.message);
                                 return;
                             }
                             chrome.storage.sync.set({ "collection": newCollection }, function () {
@@ -272,10 +284,26 @@ function mainLogic() {
                                 handleCancellation();
                             });
                         })
-                        .catch(err => console.error(err));
+                        .catch((err) => {
+                            dev.console.error(err);
+                        });
                 });
             });
         });
+
+        function handleIncorrectEmail(currentId, onj) {
+            $(`#${currentId}.lead-card`).append(`<section class="lead-card-error"><div>${onj.error}</div></section>`);
+
+            const toggleError = setInterval(function () {
+                $(`#${currentId}.lead-card .lead-card-error`).remove();
+                clearInterval(toggleError);
+            }, 3000);
+        }
+
+        function isEmail(email) {
+            var regex = /^([a-zA-Z0-9_.+-])+\@(([a-zA-Z0-9-])+\.)+([a-zA-Z0-9]{2,4})+$/;
+            return regex.test(email);
+        }
     }
 
     function removeButton() {
@@ -336,28 +364,30 @@ function mainLogic() {
     }
 
     function handleExtensionForm() {
-        $('.custom-field').keyup(delay(function (event) {
-            let currentFieldChange = {};
-            if (event) { currentFieldChange[event.currentTarget.id] = event.currentTarget.value; }
+        $('.custom-field').keyup(
+            delay(function (event) {
+                let currentFieldChange = {};
+                if (event) { currentFieldChange[event.currentTarget.id] = event.currentTarget.value; }
 
-            let newFormFields = new Promise((resolve) => {
-                chrome.storage.sync.get(['fields'], function (from) {
-                    (!from.fields || Object.keys(from.fields).length === 0) ?
-                        resolve({ company: '', email: '', name: '', notes: '', })
-                        :
-                        resolve(from.fields);
+                let newFormFields = new Promise((resolve) => {
+                    chrome.storage.sync.get(['fields'], function (from) {
+                        (!from.fields || Object.keys(from.fields).length === 0) ?
+                            resolve({ company: '', email: '', name: '', notes: '', })
+                            :
+                            resolve(from.fields);
+                    });
                 });
-            });
 
-            newFormFields.then((fields) => {
-                if (Object.keys(currentFieldChange).length) {
-                    return ({ ...fields, ...currentFieldChange });
-                }
-                return fields;
-            }).then((readyFields) => {
-                chrome.storage.sync.set({ 'fields': readyFields });
-            });
-        }, 200));
+                newFormFields.then((fields) => {
+                    if (Object.keys(currentFieldChange).length) {
+                        return ({ ...fields, ...currentFieldChange });
+                    }
+                    return fields;
+                }).then((readyFields) => {
+                    chrome.storage.sync.set({ 'fields': readyFields });
+                });
+            }, 200)
+        );
     }
 
     function setFormFields(element) {
@@ -401,7 +431,8 @@ function unauthorizedUser() {
     $('.popup-login').html(`
         <h1 class="login-header">Login</h1>
         <div class="login-form">
-            <section class="fields-holder">
+            <section class="login-fields-holder">
+                <input type="text" id="site-domain" class="${customField} domain" name="siteDomain" placeholder="Enter site domain">
                 <input type="text" id="username" class="${customField}" name="username" placeholder="Enter username">
                 <input type="password" id="password" class="${customField}" name="password" placeholder="Enter password">
             </section>
@@ -416,7 +447,10 @@ function unauthorizedUser() {
 function loginButton() {
     $('.btn-login').click(function () {
         chrome.storage.sync.get(['loginFields'], function (form) {
-            fetch(loginUrl, {
+            const siteDomain = trimInputSiteDomain(form.loginFields.siteDomain);
+
+            dev.console.log(siteDomain + loginUrl)
+            fetch(siteDomain + loginUrl, {
                 method: 'POST',
                 body: JSON.stringify({ username: form.loginFields.username, password: form.loginFields.password }),
                 headers: {
@@ -437,38 +471,47 @@ function loginButton() {
 
                         chrome.notifications.create('successfullyLogin', notificationOptions);
                     });
-                    chrome.storage.sync.set({ 'loginFields': {} });
+                    chrome.storage.sync.set({ 'loginFields': {}, });
+                    chrome.storage.sync.set({ 'siteDomain': siteDomain, });
                     $('.popup-login').empty();
                     mainLogic();
                 })
-                .catch(err => console.error(err));
-        })
-    })
+                .catch((err) => {
+                    dev.console.error(err);
+                });
+        });
+
+        function trimInputSiteDomain(url) {
+            return 'http://' + url.replace('http://', '').replace('https://', '').replace(/\//g, '').replace(/\"/g, '');
+        }
+    });
 }
 
 function handleLoginForm() {
-    $('.custom-field').keyup(delay(function (event) {
-        let currentFieldChange = {};
-        if (event) { currentFieldChange[event.currentTarget.id] = event.currentTarget.value; }
+    $('.custom-field').keyup(
+        delay(function (event) {
+            let currentFieldChange = {};
+            if (event) { currentFieldChange[event.currentTarget.name] = event.currentTarget.value; }
 
-        let newFormFields = new Promise((resolve) => {
-            chrome.storage.sync.get(['loginFields'], function (from) {
-                (!from.loginFields || Object.keys(from.loginFields).length === 0) ?
-                    resolve({ username: '', password: '', })
-                    :
-                    resolve(from.loginFields);
+            let newFormFields = new Promise((resolve) => {
+                chrome.storage.sync.get(['loginFields'], function (from) {
+                    (!from.loginFields || Object.keys(from.loginFields).length === 0) ?
+                        resolve({ username: '', password: '', })
+                        :
+                        resolve(from.loginFields);
+                });
             });
-        });
 
-        newFormFields.then((fields) => {
-            if (Object.keys(currentFieldChange).length) {
-                return ({ ...fields, ...currentFieldChange });
-            }
-            return fields;
-        }).then((readyFields) => {
-            chrome.storage.sync.set({ 'loginFields': readyFields });
-        });
-    }, 100));
+            newFormFields.then((fields) => {
+                if (Object.keys(currentFieldChange).length) {
+                    return ({ ...fields, ...currentFieldChange });
+                }
+                return fields;
+            }).then((readyFields) => {
+                chrome.storage.sync.set({ 'loginFields': readyFields });
+            });
+        }, 100)
+    );
 }
 
 function delay(callback, ms) {
