@@ -2,7 +2,6 @@
 var fetchToUrl = '/wp-json/dx-crm/v1/add-lead';
 var loginUrl = '/wp-json/jwt-auth/v1/token';
 var listMaximum = '3';
-var dev = chrome.extension.getBackgroundPage();
 
 $(function () {
     accessThroughCookieUsage()
@@ -235,7 +234,7 @@ function mainLogic() {
 
             chrome.storage.sync.get(['collection', 'siteDomain'], function (leads) {
                 const siteDomain = leads.siteDomain;
-                dev.console.log(siteDomain);
+                chrome.extension.getBackgroundPage().console.log(siteDomain);
                 let newCollection = collectionValidation(leads.collection);
                 let confirmElement = {};
                 newCollection = newCollection.filter((element) => {
@@ -268,7 +267,7 @@ function mainLogic() {
                         .then(response => response.json())
                         .then((data) => {
                             if (data.message !== 'success') {
-                                dev.console.error(data.message);
+                                chrome.extension.getBackgroundPage().console.error(data.message);
                                 return;
                             }
                             chrome.storage.sync.set({ "collection": newCollection }, function () {
@@ -285,7 +284,7 @@ function mainLogic() {
                             });
                         })
                         .catch((err) => {
-                            dev.console.error(err);
+                            chrome.extension.getBackgroundPage().console.error(err);
                         });
                 });
             });
@@ -449,7 +448,6 @@ function loginButton() {
         chrome.storage.sync.get(['loginFields'], function (form) {
             const siteDomain = trimInputSiteDomain(form.loginFields.siteDomain);
 
-            dev.console.log(siteDomain + loginUrl)
             fetch(siteDomain + loginUrl, {
                 method: 'POST',
                 body: JSON.stringify({ username: form.loginFields.username, password: form.loginFields.password }),
@@ -477,7 +475,7 @@ function loginButton() {
                     mainLogic();
                 })
                 .catch((err) => {
-                    dev.console.error(err);
+                    chrome.extension.getBackgroundPage().console.error(err);
                 });
         });
 
