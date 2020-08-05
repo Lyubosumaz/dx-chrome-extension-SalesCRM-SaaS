@@ -56,12 +56,16 @@ button {
 }
 
 .lead-card-header .lead-card-company {
+    display: flex;
+    flex: 1 1 62%;
     font-size: 20px;
     font-weight: bold;
 }
 
 .lead-card-header .lead-card-header-actions {
     display: flex;
+    flex: 1 1 38%;
+    justify-content: flex-end;
     vertical-align: middle;
 }
 
