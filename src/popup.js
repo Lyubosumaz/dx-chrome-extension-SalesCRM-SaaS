@@ -52,9 +52,10 @@ function mainLogic() {
         $('.btn-add').click(function () {
             chrome.storage.sync.get(['collection'], function (leads) {
                 let newCollection = collectionValidation(leads.collection);
+                let popupForm = {};
 
                 if ($company.val()) {
-                    const popupForm = {
+                    popupForm = {
                         id: Math.random().toString().substr(2, 8),
                         date: getTimeOfAdding(),
                         company: $company.val() ? $company.val() : 'Company name is required',
@@ -66,15 +67,24 @@ function mainLogic() {
                     newCollection.push(popupForm);
                 }
 
+                if (Object.keys(popupForm).length === 0 && popupForm.constructor === Object) {
+                    chrome.notifications.create('errorAdding', {
+                        type: 'basic',
+                        iconUrl: '../assets/images/48.png',
+                        title: 'Error with adding!',
+                        message: 'Company name is required.'
+                    });
+                    return;
+                }
+
                 chrome.storage.sync.set({ 'collection': newCollection }, function () {
-                    let notificationOptions = {
+                    chrome.notifications.create('successfullyAdded', {
                         type: 'basic',
                         iconUrl: '../assets/images/48.png',
                         title: 'Successfully Added!',
                         message: 'You have added lead information in your temporary list.'
-                    };
+                    });
 
-                    chrome.notifications.create('successfullyAdded', notificationOptions);
                     buildLeadsListWithActions(newCollection);
                 });
 
@@ -113,14 +123,6 @@ function mainLogic() {
                 }
 
                 chrome.storage.sync.set({ 'collection': newData }, function () {
-                    let notificationOptions = {
-                        type: 'basic',
-                        iconUrl: '../assets/images/48.png',
-                        title: 'Successfully Edited!',
-                        message: 'You have edited lead information in your temporary list.'
-                    };
-
-                    chrome.notifications.create('successfullyAdded', notificationOptions);
                     handleCancellation();
                 });
             });
@@ -136,14 +138,13 @@ function mainLogic() {
     function logoutButton() {
         $('.btn-logout').click(function () {
             chrome.storage.sync.remove(['details'], function () {
-                let notificationOptions = {
+                chrome.notifications.create('successfullyLogout', {
                     type: 'basic',
                     iconUrl: '../assets/images/48.png',
                     title: 'Successfully Logout!',
-                    message: 'You have logout.'
-                };
+                    message: 'You have logout successfully.'
+                });
 
-                chrome.notifications.create('successfullyLogout', notificationOptions);
                 $('.popup-list, .popup-form').empty();
                 $('.popup-list, .popup-form').removeAttr('style');
                 setLoginForm();
@@ -280,14 +281,13 @@ function mainLogic() {
                             }
 
                             chrome.storage.sync.set({ "collection": newCollection }, function () {
-                                let notificationOptions = {
+                                chrome.notifications.create('successfullySaved', {
                                     type: 'basic',
                                     iconUrl: '../assets/images/48.png',
-                                    title: 'Successfully Confirmed!',
+                                    title: 'Successfully Saved Credentials!',
                                     message: 'Credentials are saved on the site!'
-                                };
+                                });
 
-                                chrome.notifications.create('successfullyConfirmed', notificationOptions);
                                 buildLeadsListWithActions(newCollection);
                                 handleCancellation();
                             });
@@ -323,14 +323,13 @@ function mainLogic() {
                 newCollection = newCollection.filter((element) => element.id !== currentId);
 
                 chrome.storage.sync.set({ "collection": newCollection }, function () {
-                    let notificationOptions = {
+                    chrome.notifications.create('successfullyRemoved', {
                         type: 'basic',
                         iconUrl: '../assets/images/48.png',
                         title: 'Successfully Removed!',
                         message: 'Credentials removed from temporary list.'
-                    };
+                    });
 
-                    chrome.notifications.create('successfullyRemoved', notificationOptions);
                     buildLeadsListWithActions(newCollection);
                     handleCancellation();
                 });
@@ -485,15 +484,14 @@ function setLoginForm() {
                     }
 
                     chrome.storage.sync.set({ 'details': data }, function () {
-                        let notificationOptions = {
+                        chrome.notifications.create('successfullyLogin', {
                             type: 'basic',
                             iconUrl: '../assets/images/48.png',
                             title: 'Successfully Login!',
-                            message: 'You have login.'
-                        };
-
-                        chrome.notifications.create('successfullyLogin', notificationOptions);
+                            message: 'You have login successfully.'
+                        });
                     });
+
                     chrome.storage.sync.set({ 'loginFields': {}, });
                     chrome.storage.sync.set({ 'siteDomain': confirmElement.siteDomain, });
                     $('.popup-login').empty();
