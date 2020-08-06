@@ -2,6 +2,7 @@
 var fetchToUrl = '/wp-json/dx-crm/v1/add-lead';
 var loginUrl = '/wp-json/jwt-auth/v1/token';
 var listMaximum = '3';
+var debounceMilliseconds = 100;
 
 $(function () {
     accessThroughCookieUsage()
@@ -22,7 +23,7 @@ function accessThroughCookieUsage() {
 
 function mainLogic() {
     createLeadsForm();
-    handleExtensionForm();
+    handlePopupForms('fields');
     let $company = $('#company');
     let $email = $('#email');
     let $name = $('#name');
@@ -362,33 +363,6 @@ function mainLogic() {
         `);
     }
 
-    function handleExtensionForm() {
-        $('.custom-field').keyup(
-            delay(function (event) {
-                let currentFieldChange = {};
-                if (event) { currentFieldChange[event.currentTarget.id] = event.currentTarget.value; }
-
-                let newFormFields = new Promise((resolve) => {
-                    chrome.storage.sync.get(['fields'], function (from) {
-                        (!from.fields || Object.keys(from.fields).length === 0) ?
-                            resolve({ company: '', email: '', name: '', notes: '', })
-                            :
-                            resolve(from.fields);
-                    });
-                });
-
-                newFormFields.then((fields) => {
-                    if (Object.keys(currentFieldChange).length) {
-                        return ({ ...fields, ...currentFieldChange });
-                    }
-                    return fields;
-                }).then((readyFields) => {
-                    chrome.storage.sync.set({ 'fields': readyFields });
-                });
-            }, 200)
-        );
-    }
-
     function setFormFields(element) {
         if (element.saveFields && Object.keys(element.saveFields).length) {
             $company.val(element.saveFields.company);
@@ -422,7 +396,7 @@ function mainLogic() {
 function setLoginForm() {
     unauthorizedUser();
     loginButton();
-    handleLoginForm();
+    handlePopupForms('loginFields');
 }
 
 function unauthorizedUser() {
@@ -480,45 +454,62 @@ function loginButton() {
         });
 
         function trimInputSiteDomain(url) {
-            return 'http://' + url.replace('http://', '').replace('https://', '').replace(/\//g, '').replace(/\"/g, '');
+            if (url) {
+                return 'http://' + url.replace('http://', '').replace('https://', '').replace(/\//g, '').replace(/\"/g, '');
+            }
+            // TODO error if there is no url
         }
     });
 }
 
-function handleLoginForm() {
+function handlePopupForms(formSelection) {
     $('.custom-field').keyup(
         delay(function (event) {
             let currentFieldChange = {};
             if (event) { currentFieldChange[event.currentTarget.name] = event.currentTarget.value; }
 
             let newFormFields = new Promise((resolve) => {
-                chrome.storage.sync.get(['loginFields'], function (from) {
-                    (!from.loginFields || Object.keys(from.loginFields).length === 0) ?
-                        resolve({ username: '', password: '', })
-                        :
-                        resolve(from.loginFields);
+                chrome.storage.sync.get([formSelection], function (form) {
+                    switch (formSelection) {
+                        case 'loginFields':
+                            (!form[formSelection] || Object.keys(form[formSelection]).length === 0) ?
+                                resolve({ username: '', password: '', siteDomain: '' })
+                                :
+                                resolve(form[formSelection]);
+                            break;
+                        case 'fields':
+                            (!form.loginFields || Object.keys(form.loginFields).length === 0) ?
+                                resolve({ username: '', password: '', })
+                                :
+                                resolve(form.loginFields);
+                            break;
+                        default:
+                            break;
+                    }
                 });
             });
 
-            newFormFields.then((fields) => {
-                if (Object.keys(currentFieldChange).length) {
-                    return ({ ...fields, ...currentFieldChange });
-                }
-                return fields;
-            }).then((readyFields) => {
-                chrome.storage.sync.set({ 'loginFields': readyFields });
-            });
-        }, 100)
+            newFormFields
+                .then((fields) => {
+                    if (Object.keys(currentFieldChange).length) {
+                        return ({ ...fields, ...currentFieldChange });
+                    }
+                    return fields;
+                })
+                .then((readyFields) => {
+                    chrome.storage.sync.set({ [formSelection]: readyFields });
+                });
+        }, debounceMilliseconds)
     );
-}
 
-function delay(callback, ms) {
-    var timer = 0;
-    return function () {
-        var context = this, args = arguments;
-        clearTimeout(timer);
-        timer = setTimeout(function () {
-            callback.apply(context, args);
-        }, ms || 0);
-    };
+    function delay(callback, ms) {
+        var timer = 0;
+        return function () {
+            var context = this, args = arguments;
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                callback.apply(context, args);
+            }, ms || 0);
+        };
+    }
 }

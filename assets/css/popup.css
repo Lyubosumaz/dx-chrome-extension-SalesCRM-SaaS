@@ -108,6 +108,8 @@ button {
 }
 
 .lead-card-main .lead-card-email {
+    pointer-events: none;
+    text-decoration: none;
     color: #1169c1;
 }
 
