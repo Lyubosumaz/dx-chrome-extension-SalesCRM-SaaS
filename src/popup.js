@@ -1,4 +1,3 @@
-// var siteUrl = 'http://dxqaplayground.salescrm.local/';
 var fetchToUrl = '/wp-json/dx-crm/v1/add-lead';
 var loginUrl = '/wp-json/jwt-auth/v1/token';
 var listMaximum = '3';
@@ -54,18 +53,14 @@ function mainLogic() {
             chrome.storage.sync.get(['collection'], function (leads) {
                 let newCollection = collectionValidation(leads.collection);
 
-                if ($company.val() &&
-                    $email.val() &&
-                    $name.val() &&
-                    $notes.val()
-                ) {
+                if ($company.val()) {
                     const popupForm = {
                         id: Math.random().toString().substr(2, 8),
                         date: getTimeOfAdding(),
-                        company: $company.val() ? $company.val() : 'empty company value!',
-                        email: $email.val() ? $email.val() : 'empty email value!',
-                        name: $name.val() ? $name.val() : 'empty name value!',
-                        notes: $notes.val() ? $notes.val() : 'empty notes value!',
+                        company: $company.val() ? $company.val() : 'Company name is required',
+                        email: $email.val() ? $email.val() : '',
+                        name: $name.val() ? $name.val() : '',
+                        notes: $notes.val() ? $notes.val() : '',
                     };
 
                     newCollection.push(popupForm);
@@ -74,7 +69,7 @@ function mainLogic() {
                 chrome.storage.sync.set({ 'collection': newCollection }, function () {
                     let notificationOptions = {
                         type: 'basic',
-                        iconUrl: './assets/images/48.png',
+                        iconUrl: '../assets/images/48.png',
                         title: 'Successfully Added!',
                         message: 'You have added lead information in your temporary list.'
                     };
@@ -102,10 +97,10 @@ function mainLogic() {
                 const popupForm = {
                     id: leads.selectedId,
                     date: getTimeOfAdding(),
-                    company: $company.val() ? $company.val() : 'empty company value!',
-                    email: $email.val() ? $email.val() : 'empty email value!',
-                    name: $name.val() ? $name.val() : 'empty name value!',
-                    notes: $notes.val() ? $notes.val() : 'empty notes value!',
+                    company: $company.val() ? $company.val() : 'Company name is required',
+                    email: $email.val() ? $email.val() : '',
+                    name: $name.val() ? $name.val() : '',
+                    notes: $notes.val() ? $notes.val() : '',
                 };
 
                 let newData = [];
@@ -120,7 +115,7 @@ function mainLogic() {
                 chrome.storage.sync.set({ 'collection': newData }, function () {
                     let notificationOptions = {
                         type: 'basic',
-                        iconUrl: './assets/images/48.png',
+                        iconUrl: '../assets/images/48.png',
                         title: 'Successfully Edited!',
                         message: 'You have edited lead information in your temporary list.'
                     };
@@ -143,7 +138,7 @@ function mainLogic() {
             chrome.storage.sync.remove(['details'], function () {
                 let notificationOptions = {
                     type: 'basic',
-                    iconUrl: './assets/images/48.png',
+                    iconUrl: '../assets/images/48.png',
                     title: 'Successfully Logout!',
                     message: 'You have logout.'
                 };
@@ -234,23 +229,35 @@ function mainLogic() {
             const currentId = event.currentTarget.parentElement.parentElement.parentElement.id;
 
             chrome.storage.sync.get(['collection', 'siteDomain'], function (leads) {
-                const siteDomain = leads.siteDomain;
-                chrome.extension.getBackgroundPage().console.log(siteDomain);
-                let newCollection = collectionValidation(leads.collection);
+                let siteDomain = '';
                 let confirmElement = {};
+                if (leads.siteDomain) {
+                    siteDomain = leads.siteDomain;
+                } else {
+                    confirmElement.error = 'Your domain is incorrect, login again';
+                }
+
+                let newCollection = collectionValidation(leads.collection);
+
                 newCollection = newCollection.filter((element) => {
+                    if (element.company === 'Company name is required') {
+                        confirmElement.error = 'Your company name is not valid';
+                        return;
+                    }
+
                     if (element.id === currentId) {
-                        isEmail(element.email) ?
+                        (isEmail(element.email) || element.email === '') ?
                             confirmElement = element
                             :
                             confirmElement.error = 'Your email address is not valid';
-                    } else {
-                        return element;
+                        return;
                     }
+
+                    return element;
                 });
 
                 if (confirmElement.hasOwnProperty('error')) {
-                    handleIncorrectEmail(currentId, confirmElement);
+                    handleIncorrectData(confirmElement);
                     return;
                 }
 
@@ -268,13 +275,14 @@ function mainLogic() {
                         .then(response => response.json())
                         .then((data) => {
                             if (data.message !== 'success') {
-                                chrome.extension.getBackgroundPage().console.error(data.message);
+                                handleIncorrectData({ error: 'Your domain is incorrect, login again.' });
                                 return;
                             }
+
                             chrome.storage.sync.set({ "collection": newCollection }, function () {
                                 let notificationOptions = {
                                     type: 'basic',
-                                    iconUrl: './assets/images/48.png',
+                                    iconUrl: '../assets/images/48.png',
                                     title: 'Successfully Confirmed!',
                                     message: 'Credentials are saved on the site!'
                                 };
@@ -283,19 +291,19 @@ function mainLogic() {
                                 buildLeadsListWithActions(newCollection);
                                 handleCancellation();
                             });
-                        })
-                        .catch((err) => {
-                            chrome.extension.getBackgroundPage().console.error(err);
                         });
                 });
             });
         });
 
-        function handleIncorrectEmail(currentId, onj) {
-            $(`#${currentId}.lead-card`).append(`<section class="lead-card-error"><div>${onj.error}</div></section>`);
+        const $leadCardError = $('.lead-card-error');
+        function handleIncorrectData(onj) {
+            const relativeTop = $('.DevriX_SalesCRM_SaaS').height() - 50;
+            $leadCardError.css({ top: relativeTop });
+            $leadCardError.text(onj.error);
 
             const toggleError = setInterval(function () {
-                $(`#${currentId}.lead-card .lead-card-error`).remove();
+                $leadCardError.text('');
                 clearInterval(toggleError);
             }, 3000);
         }
@@ -317,7 +325,7 @@ function mainLogic() {
                 chrome.storage.sync.set({ "collection": newCollection }, function () {
                     let notificationOptions = {
                         type: 'basic',
-                        iconUrl: './assets/images/48.png',
+                        iconUrl: '../assets/images/48.png',
                         title: 'Successfully Removed!',
                         message: 'Credentials removed from temporary list.'
                     };
@@ -347,11 +355,13 @@ function mainLogic() {
         const fieldsActionsButtons = 'fields-actions-buttons';
         $('.popup-form').html(`
             <section class="fields-holder">
-                <input type="text" id="company" class="${customField}" name="company" placeholder="Company name ...">
+                <input type="text" id="company" class="${customField}" name="company" placeholder="Company name *">
                 <input type="email" id="email" class="${customField}" name="email" placeholder="Email address">
                 <input type="text" id="name" class="${customField}" name="name" placeholder="Name">
                 <input type="text" id="notes" class="${customField}" name="notes" placeholder="Notes">
             </section>
+
+            <section class="lead-card-error"></section>
 
             <section class="fields-actions">
                 <button class="btn-add ${fieldsActionsButtons}" >Add</button>
@@ -394,14 +404,17 @@ function mainLogic() {
 }
 
 function setLoginForm() {
+    $(document).unbind();
+    chrome.storage.sync.set({ 'loginFields': {}, });
+    chrome.storage.sync.set({ 'siteDomain': {}, });
     unauthorizedUser();
-    loginButton();
     handlePopupForms('loginFields');
-}
+    loginButton();
+    pressEnterToLogin();
 
-function unauthorizedUser() {
-    const customField = 'custom-field';
-    $('.popup-login').html(`
+    function unauthorizedUser() {
+        const customField = 'custom-field';
+        $('.popup-login').html(`
         <h1 class="login-header">Login</h1>
         <div class="login-form">
             <section class="login-fields-holder">
@@ -410,19 +423,45 @@ function unauthorizedUser() {
                 <input type="password" id="password" class="${customField}" name="password" placeholder="Enter password">
             </section>
 
+            <section class="login-fields-error"></section>
+            
             <section class="fields-actions">
                 <button class="btn-login fields-actions-buttons">Login</button>
             </section>
         </div>
-    `);
-}
+        `);
+    }
 
-function loginButton() {
-    $('.btn-login').click(function () {
+    function loginButton() {
+        $('.btn-login').click(function () {
+            handleLogin();
+        });
+    }
+
+    function pressEnterToLogin() {
+        $(document).on('keypress', function (e) {
+            if (e.which === 13) {
+                handleLogin();
+            }
+        });
+    }
+
+    function handleLogin() {
         chrome.storage.sync.get(['loginFields'], function (form) {
-            const siteDomain = trimInputSiteDomain(form.loginFields.siteDomain);
+            let confirmElement = {};
 
-            fetch(siteDomain + loginUrl, {
+            if (form.loginFields.siteDomain === '') {
+                confirmElement.error = 'Site domain is empty';
+            } else {
+                confirmElement.siteDomain = trimInputSiteDomain(form.loginFields.siteDomain);
+            }
+
+            if (confirmElement.hasOwnProperty('error')) {
+                handleIncorrectData(confirmElement);
+                return;
+            }
+
+            fetch(confirmElement.siteDomain + loginUrl, {
                 method: 'POST',
                 body: JSON.stringify({ username: form.loginFields.username, password: form.loginFields.password }),
                 headers: {
@@ -431,12 +470,24 @@ function loginButton() {
             })
                 .then(response => response.json())
                 .then((data) => {
-                    if (!data.token) { return; }
+                    if (!data.token) {
+                        switch (data.code) {
+                            case '[jwt_auth] invalid_username':
+                                handleIncorrectData({ error: 'Unknown username.' });
+                                break;
+                            case '[jwt_auth] incorrect_password':
+                                handleIncorrectData({ error: 'Invalid password.' });
+                                break;
+                            default:
+                                break;
+                        }
+                        return;
+                    }
 
                     chrome.storage.sync.set({ 'details': data }, function () {
                         let notificationOptions = {
                             type: 'basic',
-                            iconUrl: './assets/images/48.png',
+                            iconUrl: '../assets/images/48.png',
                             title: 'Successfully Login!',
                             message: 'You have login.'
                         };
@@ -444,22 +495,30 @@ function loginButton() {
                         chrome.notifications.create('successfullyLogin', notificationOptions);
                     });
                     chrome.storage.sync.set({ 'loginFields': {}, });
-                    chrome.storage.sync.set({ 'siteDomain': siteDomain, });
+                    chrome.storage.sync.set({ 'siteDomain': confirmElement.siteDomain, });
                     $('.popup-login').empty();
                     mainLogic();
-                })
-                .catch((err) => {
-                    chrome.extension.getBackgroundPage().console.error(err);
                 });
         });
+
+        const $loginFieldsError = $('.login-fields-error');
+        function handleIncorrectData(obj) {
+
+
+            $loginFieldsError.text(obj.error);
+
+            const toggleError = setInterval(function () {
+                $loginFieldsError.text = '';
+                clearInterval(toggleError);
+            }, 3000);
+        }
 
         function trimInputSiteDomain(url) {
             if (url) {
                 return 'http://' + url.replace('http://', '').replace('https://', '').replace(/\//g, '').replace(/\"/g, '');
             }
-            // TODO error if there is no url
         }
-    });
+    }
 }
 
 function handlePopupForms(formSelection) {

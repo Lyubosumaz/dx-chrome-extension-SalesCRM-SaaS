@@ -119,11 +119,6 @@ button {
     font-style: italic;
 }
 
-.lead-card .lead-card-error {
-    margin: 1em 0;
-    color: #ff0001;
-}
-
 .login-form .login-fields-holder {
     display: flex;
     flex-wrap: wrap;
@@ -135,6 +130,21 @@ button {
 
 .login-form .login-fields-holder .custom-field.domain {
     flex: 1 0 90%;
+}
+
+.login-fields-holder, .fields-holder {
+    margin-bottom: 3em;
+}
+
+.login-fields-error, .lead-card-error {
+    margin: 0 1em;
+    position: absolute;
+    width: 100%;
+    color: #ff0001;
+}
+
+.login-fields-error {
+    top: 69%;
 }
 
 .fields-holder, .login-fields-holder {
